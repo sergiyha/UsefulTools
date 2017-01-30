@@ -7,15 +7,32 @@ using UnityEngine;
 [System.Serializable]
 public class ScreenShotMenu : EditorWindow
 {
+	void OnEnable()
+	{
+		Path = Application.dataPath;
+		cameraScriptableObject = CreateInstance<CamerasScriptableObject>();
+		ScriptableObject cameraScriptable = cameraScriptableObject;
+		serializedCameraObj = new SerializedObject(cameraScriptable);
+		stringsProperty = serializedCameraObj.FindProperty("cameras");
+
+	}
+
+	private SerializedProperty stringsProperty;
+	private SerializedObject serializedCameraObj;
+	private CamerasScriptableObject cameraScriptableObject;
+
+
+	public Vector2 cameraScrollView = Vector2.zero;
 	public string Path;
 	const int maxDimention = 10000;
 	public string inputName;
 	public string inputPath;
+	bool camerasIsCreated;
 
 	public int w;
 	public int h;
 
-	public Camera camera;
+	private int camerasCount;
 
 	public string[] aspectRatios = new string[] { "16x9", "16x10", "Manualy" };
 
@@ -44,62 +61,26 @@ public class ScreenShotMenu : EditorWindow
 
 	public AspectRatio currentAspectRatio;
 
-	private void OnEnable()
+
+
+	void ResolutionBlock()
 	{
-		Path = Application.dataPath;
+
 	}
 
 	void OnGUI()
 	{
 		var origFontStyle = EditorStyles.label.fontStyle;
-		EditorStyles.label.fontStyle = FontStyle.Bold;
-		EditorGUILayout.LabelField("Select Aspect Ratio");
-		EditorStyles.label.fontStyle = origFontStyle;
+		PaintAspectRatio(origFontStyle);
+		AspectChecker();
+		PaintResolution(origFontStyle);
+		PaintCameras();
+		PaintPathToSaveBlock();
+		PaitShotButton();
+	}
 
-		ratioIndex = EditorGUILayout.Popup(ratioIndex, aspectRatios);
-
-		EditorStyles.label.fontStyle = FontStyle.Bold;
-		EditorGUILayout.LabelField("Select  Resolution");
-		EditorStyles.label.fontStyle = origFontStyle;
-
-		Checker();
-
-		if (currentAspectRatio != AspectRatio.NON)
-		{
-			resolutionIndex = EditorGUILayout.Popup(resolutionIndex, GetResolutionArr());
-		}
-		else
-		{
-			Repaint();
-			Rect r = EditorGUILayout.BeginHorizontal("box");
-			EditorGUILayout.LabelField("Width:", GUILayout.MaxWidth(40f));
-			w = EditorGUILayout.IntField(w =(w > maxDimention)? maxDimention : w);
-			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(40f));
-			h = EditorGUILayout.IntField(h = (h > maxDimention) ? maxDimention : h);
-			EditorGUILayout.EndHorizontal();
-		}
-
-		camera = (Camera)EditorGUILayout.ObjectField("Drag camera here:", camera, typeof(Camera), true);
-		inputName = EditorGUILayout.TextField("Choose name: ", inputName);
-
-		Repaint();
-		EditorGUILayout.BeginHorizontal("box");
-		EditorGUILayout.LabelField(Path);
-		if (GUILayout.Button("Choose Directory", GUILayout.MaxWidth(120f)))
-		{
-			var path = EditorUtility.OpenFolderPanel("Choose Directory", "", "");
-			Path = path;
-		}
-		if (Path == "")
-		{
-			Path = Application.dataPath;
-		}
-
-		EditorGUILayout.EndHorizontal();
-
-
-
-
+	private void PaitShotButton()
+	{
 		if (GUILayout.Button("Shoot"))
 		{
 			if (currentAspectRatio == AspectRatio.SixteenByNine || currentAspectRatio == AspectRatio.SixteenByTen)
@@ -115,12 +96,85 @@ public class ScreenShotMenu : EditorWindow
 			}
 
 			MakeShot(w, h);
-
-
 		}
 	}
 
-	private void Checker()
+	private void PaintCameras()
+	{
+		Action drawCamera = () =>
+		{
+			EditorGUILayout.PropertyField(stringsProperty, true);
+			serializedCameraObj.ApplyModifiedProperties();
+		};
+
+
+		if (cameraScriptableObject.cameras == null || cameraScriptableObject.cameras.Length == 0 || cameraScriptableObject.cameras.Length <= 15)// if camera null
+		{
+			drawCamera();
+		}
+		else//if camera not null
+		{
+			cameraScrollView = EditorGUILayout.BeginScrollView(cameraScrollView, GUILayout.Width(300), GUILayout.Height(300));
+			drawCamera();
+			Repaint();
+			EditorGUILayout.EndScrollView();
+
+		}
+
+		inputName = EditorGUILayout.TextField("Choose name: ", inputName);
+	}
+
+	private void PaintPathToSaveBlock()
+	{
+		EditorGUILayout.BeginHorizontal("box");
+		EditorGUILayout.LabelField(Path);
+		if (GUILayout.Button("Choose Directory", GUILayout.MaxWidth(120f)))
+		{
+			var path = EditorUtility.OpenFolderPanel("Choose Directory", "", "");
+			Path = path;
+		}
+		if (Path == "")
+		{
+			Path = Application.dataPath;
+		}
+
+		EditorGUILayout.EndHorizontal();
+	}
+
+	private void PaintResolution(FontStyle origFontStyle)
+	{
+		EditorStyles.label.fontStyle = FontStyle.Bold;
+		EditorGUILayout.LabelField("Select  Resolution");
+		EditorStyles.label.fontStyle = origFontStyle;
+
+
+		if (currentAspectRatio != AspectRatio.NON)
+		{
+			resolutionIndex = EditorGUILayout.Popup(resolutionIndex, GetResolutionArr());
+		}
+		else
+		{
+			Rect r = EditorGUILayout.BeginHorizontal("box");
+			EditorGUILayout.LabelField("Width:", GUILayout.MaxWidth(40f));
+			w = EditorGUILayout.IntField(w = (w > maxDimention) ? maxDimention : w);
+			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(40f));
+			h = EditorGUILayout.IntField(h = (h > maxDimention) ? maxDimention : h);
+			Repaint();
+			EditorGUILayout.EndHorizontal();
+		}
+	}
+
+	private void PaintAspectRatio(FontStyle origFontStyle)
+	{
+		EditorStyles.label.fontStyle = FontStyle.Bold;
+		EditorGUILayout.LabelField("Select Aspect Ratio");
+		EditorStyles.label.fontStyle = origFontStyle;
+
+		ratioIndex = EditorGUILayout.Popup(ratioIndex, aspectRatios);
+	}
+
+
+	private void AspectChecker()
 	{
 		switch (ratioIndex)
 		{
@@ -135,6 +189,7 @@ public class ScreenShotMenu : EditorWindow
 				break;
 		}
 	}
+
 
 	private void CreateResolutionData()
 	{
@@ -153,6 +208,7 @@ public class ScreenShotMenu : EditorWindow
 		}
 		return dataResDict;
 	}
+
 
 	private string[] GetResolutionArr()
 	{
@@ -173,15 +229,16 @@ public class ScreenShotMenu : EditorWindow
 		return a;
 	}
 
+
 	public void MakeShot(int w, int h)
 	{
 		RenderTexture rt = new RenderTexture(w, h, 24);
-		camera.targetTexture = rt;
+		//	camera.targetTexture = rt;
 		Texture2D screenShot = new Texture2D(w, h, TextureFormat.RGB24, false);
-		camera.Render();
+		//camera.Render();
 		RenderTexture.active = rt;
 		screenShot.ReadPixels(new Rect(0, 0, w, h), 0, 0);
-		camera.targetTexture = null;
+		//camera.targetTexture = null;
 		RenderTexture.active = null;
 		byte[] bytes = screenShot.EncodeToPNG();
 		System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath : Path + "/" + inputName + ".png", bytes);
