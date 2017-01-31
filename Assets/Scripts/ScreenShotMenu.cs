@@ -7,16 +7,6 @@ using UnityEngine;
 [System.Serializable]
 public class ScreenShotMenu : EditorWindow
 {
-	void OnEnable()
-	{
-		Path = Application.dataPath;
-		cameraScriptableObject = CreateInstance<CamerasScriptableObject>();
-		ScriptableObject cameraScriptable = cameraScriptableObject;
-		serializedCameraObj = new SerializedObject(cameraScriptable);
-		stringsProperty = serializedCameraObj.FindProperty("cameras");
-
-	}
-
 	private SerializedProperty stringsProperty;
 	private SerializedObject serializedCameraObj;
 	private CamerasScriptableObject cameraScriptableObject;
@@ -28,6 +18,7 @@ public class ScreenShotMenu : EditorWindow
 	public string inputName;
 	public string inputPath;
 	bool camerasIsCreated;
+	bool isTransparent;
 
 	public int w;
 	public int h;
@@ -62,18 +53,37 @@ public class ScreenShotMenu : EditorWindow
 	public AspectRatio currentAspectRatio;
 
 
-
-	void ResolutionBlock()
+	private void PainTransparancyToggle()
 	{
-
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.LabelField("Transparency: ", GUILayout.MaxWidth(100f));
+		isTransparent = EditorGUILayout.Toggle(isTransparent);
+		EditorGUILayout.EndHorizontal();
 	}
 
-	void OnGUI()
+
+	private void OnEnable()
 	{
+		Path = Application.dataPath;
+		CreateSerializedCameraProperty();
+	}
+
+	private void CreateSerializedCameraProperty()
+	{
+		cameraScriptableObject = CreateInstance<CamerasScriptableObject>();
+		ScriptableObject cameraScriptable = cameraScriptableObject;
+		serializedCameraObj = new SerializedObject(cameraScriptable);
+		stringsProperty = serializedCameraObj.FindProperty("cameras");
+	}
+
+	private void OnGUI()
+	{
+		EnshureThatSerializedObjectWasntDestroyed();
 		var origFontStyle = EditorStyles.label.fontStyle;
 		PaintAspectRatio(origFontStyle);
 		AspectChecker();
 		PaintResolution(origFontStyle);
+		PainTransparancyToggle();
 		PaintCameras();
 		PaintPathToSaveBlock();
 		PaitShotButton();
@@ -92,10 +102,23 @@ public class ScreenShotMenu : EditorWindow
 			}
 			else if (currentAspectRatio == AspectRatio.NON)
 			{
-
+				Debug.LogError("Aspect ratio is NoN");
 			}
 
-			MakeShot(w, h);
+			MakeShot(w, h, GetCorrectTextureFormat());
+		}
+	}
+
+	private TextureFormat GetCorrectTextureFormat()
+	{
+		return isTransparent ? TextureFormat.ARGB32 : TextureFormat.RGB24;
+	}
+
+	private void EnshureThatSerializedObjectWasntDestroyed()
+	{
+		if (serializedCameraObj.targetObject == null)
+		{
+			CreateSerializedCameraProperty();
 		}
 	}
 
@@ -154,7 +177,7 @@ public class ScreenShotMenu : EditorWindow
 		}
 		else
 		{
-			Rect r = EditorGUILayout.BeginHorizontal("box");
+			EditorGUILayout.BeginHorizontal("box");
 			EditorGUILayout.LabelField("Width:", GUILayout.MaxWidth(40f));
 			w = EditorGUILayout.IntField(w = (w > maxDimention) ? maxDimention : w);
 			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(40f));
@@ -230,18 +253,24 @@ public class ScreenShotMenu : EditorWindow
 	}
 
 
-	public void MakeShot(int w, int h)
+	public void MakeShot(int w, int h, TextureFormat textureFormat = TextureFormat.RGB24)
 	{
-		RenderTexture rt = new RenderTexture(w, h, 24);
-		//	camera.targetTexture = rt;
-		Texture2D screenShot = new Texture2D(w, h, TextureFormat.RGB24, false);
-		//camera.Render();
-		RenderTexture.active = rt;
-		screenShot.ReadPixels(new Rect(0, 0, w, h), 0, 0);
-		//camera.targetTexture = null;
-		RenderTexture.active = null;
-		byte[] bytes = screenShot.EncodeToPNG();
-		System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath : Path + "/" + inputName + ".png", bytes);
+		int i = 0;
+		foreach (var camera in cameraScriptableObject.cameras)
+		{
+			i++;
+			RenderTexture rt = new RenderTexture(w, h, 24);
+
+			camera.targetTexture = rt;
+			Texture2D screenShot = new Texture2D(w, h, textureFormat, false);
+			camera.Render();
+			RenderTexture.active = rt;
+			screenShot.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+			camera.targetTexture = null;
+			RenderTexture.active = null;
+			byte[] bytes = screenShot.EncodeToPNG();
+			System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath : Path + "/" + inputName + "_" + i + ".png", bytes);
+		}
 	}
 }
 
