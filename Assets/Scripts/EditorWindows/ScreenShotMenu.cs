@@ -11,17 +11,16 @@ public class ScreenShotMenu : EditorWindow
 	private SerializedObject serializedCameraObj;
 	private CamerasScriptableObject cameraScriptableObject;
 
-
 	public Vector2 cameraScrollView = Vector2.zero;
 	public string Path;
 	const int maxDimention = 10000;
+	const int minDimention = 1;
 	public string inputName;
 	public string inputPath;
-	bool camerasIsCreated;
 	bool isTransparent;
 
-	public int w;
-	public int h;
+	public int w = 1;
+	public int h = 1;
 
 	private int camerasCount;
 
@@ -50,8 +49,9 @@ public class ScreenShotMenu : EditorWindow
 	Dictionary<string, Vector2> resolutionData;
 	string[] chosenResolutionArray;
 
-	public AspectRatio currentAspectRatio;
+	public AspectRatioStates currentAspectRatio;
 
+	private List<OutOfRangeStates> statesOnThisFrame = new List<OutOfRangeStates>();
 
 	private void PainTransparancyToggle()
 	{
@@ -78,6 +78,8 @@ public class ScreenShotMenu : EditorWindow
 
 	private void OnGUI()
 	{
+		//Notifications
+
 		EnshureThatSerializedObjectWasntDestroyed();
 		var origFontStyle = EditorStyles.label.fontStyle;
 		PaintAspectRatio(origFontStyle);
@@ -86,28 +88,42 @@ public class ScreenShotMenu : EditorWindow
 		PainTransparancyToggle();
 		PaintCameras();
 		PaintPathToSaveBlock();
-		PaitShotButton();
+		PaintShotButton();
+
+
+		OutOfRangeChecker();
+		PaintPreviev();
+
+
 	}
 
-	private void PaitShotButton()
+	private void PaintPreviev()
+	{
+		if (GUILayout.Button("Preview"))
+		{
+			Camera[] cameras = (Camera[])cameraScriptableObject.cameras.Clone();
+			float ratio = (float)w / (float)h;
+			var prevWindow = GetWindow<PreviewWindow>();
+			prevWindow.CreatePreview(cameras, ratio);
+		}
+	}
+
+	private void PaintShotButton()
 	{
 		if (GUILayout.Button("Shoot"))
 		{
-			if (currentAspectRatio == AspectRatio.SixteenByNine || currentAspectRatio == AspectRatio.SixteenByTen)
-			{
-				resolutionData = GetResolutionDictionary();
-				chosenResolutionArray = GetResolutionArr();
-				w = (int)resolutionData[chosenResolutionArray[resolutionIndex]].x;
-				h = (int)resolutionData[chosenResolutionArray[resolutionIndex]].y;
-			}
-			else if (currentAspectRatio == AspectRatio.NON)
-			{
-				Debug.LogError("Aspect ratio is NoN");
-			}
-
 			MakeShot(w, h, GetCorrectTextureFormat());
 		}
 	}
+
+	void SetWidthAndHeightIfCustom()
+	{
+		resolutionData = GetResolutionDictionary();
+		chosenResolutionArray = GetResolutionArr();
+		w = (int)resolutionData[chosenResolutionArray[resolutionIndex]].x;
+		h = (int)resolutionData[chosenResolutionArray[resolutionIndex]].y;
+	}
+
 
 	private TextureFormat GetCorrectTextureFormat()
 	{
@@ -171,17 +187,18 @@ public class ScreenShotMenu : EditorWindow
 		EditorStyles.label.fontStyle = origFontStyle;
 
 
-		if (currentAspectRatio != AspectRatio.NON)
+		if (currentAspectRatio != AspectRatioStates.Manualy)
 		{
 			resolutionIndex = EditorGUILayout.Popup(resolutionIndex, GetResolutionArr());
+			SetWidthAndHeightIfCustom();
 		}
 		else
 		{
 			EditorGUILayout.BeginHorizontal("box");
 			EditorGUILayout.LabelField("Width:", GUILayout.MaxWidth(40f));
-			w = EditorGUILayout.IntField(w = (w > maxDimention) ? maxDimention : w);
+			w = EditorGUILayout.IntField(SetCorrectDimention(w));
 			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(40f));
-			h = EditorGUILayout.IntField(h = (h > maxDimention) ? maxDimention : h);
+			h = EditorGUILayout.IntField(SetCorrectDimention(h));
 			Repaint();
 			EditorGUILayout.EndHorizontal();
 		}
@@ -202,13 +219,13 @@ public class ScreenShotMenu : EditorWindow
 		switch (ratioIndex)
 		{
 			case 0:
-				currentAspectRatio = AspectRatio.SixteenByNine;
+				currentAspectRatio = AspectRatioStates.SixteenByNine;
 				break;
 			case 1:
-				currentAspectRatio = AspectRatio.SixteenByTen;
+				currentAspectRatio = AspectRatioStates.SixteenByTen;
 				break;
 			case 2:
-				currentAspectRatio = AspectRatio.NON;
+				currentAspectRatio = AspectRatioStates.Manualy;
 				break;
 		}
 	}
@@ -238,13 +255,13 @@ public class ScreenShotMenu : EditorWindow
 		string[] a = null;
 		switch (currentAspectRatio)
 		{
-			case AspectRatio.SixteenByNine:
+			case AspectRatioStates.SixteenByNine:
 				a = resolution_16x9;
 				break;
-			case AspectRatio.SixteenByTen:
+			case AspectRatioStates.SixteenByTen:
 				a = resolution_16x10;
 				break;
-			case AspectRatio.NON:
+			case AspectRatioStates.Manualy:
 				a = null;
 				break;
 		}
@@ -272,12 +289,55 @@ public class ScreenShotMenu : EditorWindow
 			System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath : Path + "/" + inputName + "_" + i + ".png", bytes);
 		}
 	}
+
+	private void OutOfRangeChecker()
+	{
+		if (statesOnThisFrame.Contains(OutOfRangeStates.MaxOutOfRange))
+		{
+			DialogDisplayerManager.Instance.HeightOrWidthIsGreaterThanRange();
+		}
+		else if (statesOnThisFrame.Contains(OutOfRangeStates.MinOutOfRange))
+		{
+			DialogDisplayerManager.Instance.HeightOrWidthIsLessThanRange();
+		}
+		else if (statesOnThisFrame.Contains(OutOfRangeStates.None))
+		{
+			return;
+		}
+
+		statesOnThisFrame.Clear();
+	}
+
+	private int SetCorrectDimention(int dimention)
+	{
+		Func<int> getMaxDimention = () =>
+		{
+			statesOnThisFrame.Add(OutOfRangeStates.MaxOutOfRange);
+			return maxDimention;
+		};
+
+		Func<int> getMinDimention = () =>
+		{
+			statesOnThisFrame.Add(OutOfRangeStates.MinOutOfRange);
+			return minDimention;
+		};
+
+		Func<int> getDimention = () =>
+		{
+			statesOnThisFrame.Add(OutOfRangeStates.None);
+			return dimention;
+		};
+		int retValue = 0;
+
+		retValue = (dimention <= 0 || dimention == minDimention)
+				   ? getMinDimention() :
+				   (dimention >= maxDimention || dimention == maxDimention)
+				   ? getMaxDimention() : getDimention();
+		return retValue;
+	}
 }
 
-public enum AspectRatio
-{
-	SixteenByNine, SixteenByTen, NON
-}
+
 
 
 

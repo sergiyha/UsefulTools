@@ -5,6 +5,5 @@ using UnityEngine;
 [System.Serializable]
 public class CamerasScriptableObject : ScriptableObject
 {
-	
 	public Camera[] cameras;
 }

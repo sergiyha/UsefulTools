@@ -12,7 +12,7 @@ public class ScreenShotMenuExecutor
 		{
 			var window = EditorWindow.GetWindow(typeof(ScreenShotMenu));
 			window.minSize = new Vector2(400, 400);
-			window.maxSize= new Vector2(600, 600);
+			window.maxSize = new Vector2(600, 600);
 		};
 	}
 

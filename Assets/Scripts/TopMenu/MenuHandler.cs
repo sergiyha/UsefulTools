@@ -10,7 +10,7 @@ public class MenuHandler : MonoBehaviour
 {
 
 	public static event Action OnCreateScreenshot;
-
+	
 
 	[MenuItem("UsefulTools/Open Screenshot Menu")]
 	static void CreateScreenShot()
