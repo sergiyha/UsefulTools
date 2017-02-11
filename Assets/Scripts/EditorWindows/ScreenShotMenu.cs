@@ -90,7 +90,6 @@ public class ScreenShotMenu : EditorWindow
 		PaintPathToSaveBlock();
 		PaintShotButton();
 
-
 		OutOfRangeChecker();
 		PaintPreviev();
 
@@ -101,10 +100,8 @@ public class ScreenShotMenu : EditorWindow
 	{
 		if (GUILayout.Button("Preview"))
 		{
-			Camera[] cameras = (Camera[])cameraScriptableObject.cameras.Clone();
-			float ratio = (float)w / (float)h;
 			var prevWindow = GetWindow<PreviewWindow>();
-			prevWindow.CreatePreview(cameras, ratio);
+			prevWindow.LoadDataToPreviev(ref cameraScriptableObject.cameras, w, h, true);
 		}
 	}
 
