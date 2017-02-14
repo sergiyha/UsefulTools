@@ -10,12 +10,12 @@ public class MenuHandler : MonoBehaviour
 {
 
 	public static event Action OnCreateScreenshot;
-	
+
 
 	[MenuItem("UsefulTools/Open Screenshot Menu")]
 	static void CreateScreenShot()
 	{
-		OnCreateScreenshot();
+		ExecuteEvent(OnCreateScreenshot);
 	}
 
 	private static bool IsHadlerIsExist(Action _event)

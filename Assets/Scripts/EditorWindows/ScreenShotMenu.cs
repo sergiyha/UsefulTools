@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -79,37 +80,98 @@ public class ScreenShotMenu : EditorWindow
 	private void OnGUI()
 	{
 		//Notifications
-
 		EnshureThatSerializedObjectWasntDestroyed();
-		var origFontStyle = EditorStyles.label.fontStyle;
-		PaintAspectRatio(origFontStyle);
+
+
+		PaintAspectRatio();
 		AspectChecker();
-		PaintResolution(origFontStyle);
+		PaintResolution();
 		PainTransparancyToggle();
 		PaintCameras();
 		PaintPathToSaveBlock();
 		PaintShotButton();
-
-		OutOfRangeChecker();
 		PaintPreviev();
 
-
+		CheckIfShowCamerasExistingNotification();
+		OutOfRangeChecker();
 	}
+
+
+	private bool cameraExistingNotificationHolder = false;
+	private void CheckIfShowCamerasExistingNotification()
+	{
+		if (cameraExistingNotificationHolder)
+		{
+			DialogDisplayerManager.Instance.ThereIsNoCameras();
+		}
+	}
+
 
 	private void PaintPreviev()
 	{
 		if (GUILayout.Button("Preview"))
 		{
-			var prevWindow = GetWindow<PreviewWindow>();
-			prevWindow.LoadDataToPreviev(ref cameraScriptableObject.cameras, w, h, true);
+			if (IsCameraExist())
+			{
+				var prevWindow = GetWindow<PreviewWindow>();
+				prevWindow.LoadDataToPreviev(ref cameraScriptableObject.cameras, w, h, true);
+			}
+			else
+			{
+				cameraExistingNotificationHolder = true;
+			}
+		}
+	}
+
+	private bool IsCameraExist()
+	{
+		bool isCameraExist = false;
+		if (cameraScriptableObject.cameras == null) return false;
+		foreach (var camera in cameraScriptableObject.cameras)
+		{
+			if (camera != null)
+			{
+				isCameraExist = true;
+				break;
+			}
+		}
+		return isCameraExist;
+	}
+
+	private float timeToShowNotification = 2f;
+
+	private void Update()
+	{
+		CheckIfCameraNotificationIsExist();
+	}
+
+	private void CheckIfCameraNotificationIsExist()
+	{
+		if (cameraExistingNotificationHolder)
+		{
+			timeToShowNotification -= 0.01f;
+
+			if (timeToShowNotification <= 0f)
+			{
+				cameraExistingNotificationHolder = false;
+				timeToShowNotification = 2.0f;
+				Repaint();
+			}
 		}
 	}
 
 	private void PaintShotButton()
 	{
-		if (GUILayout.Button("Shoot"))
+		if (GUILayout.Button("Shot"))
 		{
-			MakeShot(w, h, GetCorrectTextureFormat());
+			if (IsCameraExist())
+			{
+				MakeShot(w, h, GetCorrectTextureFormat());
+			}
+			else
+			{
+				cameraExistingNotificationHolder = true;
+			}
 		}
 	}
 
@@ -150,7 +212,7 @@ public class ScreenShotMenu : EditorWindow
 		}
 		else//if camera not null
 		{
-			cameraScrollView = EditorGUILayout.BeginScrollView(cameraScrollView, GUILayout.Width(300), GUILayout.Height(300));
+			cameraScrollView = EditorGUILayout.BeginScrollView(cameraScrollView, GUILayout.Width(position.width), GUILayout.Height(300));
 			drawCamera();
 			Repaint();
 			EditorGUILayout.EndScrollView();
@@ -177,11 +239,11 @@ public class ScreenShotMenu : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void PaintResolution(FontStyle origFontStyle)
+	private void PaintResolution()
 	{
 		EditorStyles.label.fontStyle = FontStyle.Bold;
 		EditorGUILayout.LabelField("Select  Resolution");
-		EditorStyles.label.fontStyle = origFontStyle;
+		EditorStyles.label.fontStyle = EditorStyles.label.fontStyle;
 
 
 		if (currentAspectRatio != AspectRatioStates.Manualy)
@@ -201,11 +263,11 @@ public class ScreenShotMenu : EditorWindow
 		}
 	}
 
-	private void PaintAspectRatio(FontStyle origFontStyle)
+	private void PaintAspectRatio()
 	{
 		EditorStyles.label.fontStyle = FontStyle.Bold;
 		EditorGUILayout.LabelField("Select Aspect Ratio");
-		EditorStyles.label.fontStyle = origFontStyle;
+		EditorStyles.label.fontStyle = EditorStyles.label.fontStyle;
 
 		ratioIndex = EditorGUILayout.Popup(ratioIndex, aspectRatios);
 	}
@@ -272,6 +334,7 @@ public class ScreenShotMenu : EditorWindow
 		int i = 0;
 		foreach (var camera in cameraScriptableObject.cameras)
 		{
+			if (camera == null) continue;
 			i++;
 			RenderTexture rt = new RenderTexture(w, h, 24);
 

@@ -16,29 +16,62 @@ public class PreviewWindow : EditorWindow
 	private Vector2 previewScrollView = new Vector2(20, 20);
 
 	private Vector3 currentPreviewWidthHeight;
+	private Camera[] tempCameras;
 
 	public void LoadDataToPreviev(ref Camera[] cameras, int width, int height, bool isTranspatented)
 	{
+		tempCameras = cameras;
 		this.isTranspatented = isTranspatented;
 		int gcd = BasicMath.LeastCommonMultiple.gcf(width, height);
 		aspectToPreviev = new Vector2((int)width / gcd, (int)height / gcd);
 		currentPreviewWidthHeight = GetcurrentHeighAndWidth(aspectToPreviev);
 
 		MakePreviewShot(
-			((int)currentPreviewWidthHeight.x > width) ? width : (int)currentPreviewWidthHeight.x,
-			((int)currentPreviewWidthHeight.y > height) ? height : (int)currentPreviewWidthHeight.y,
+			((int)currentPreviewWidthHeight.x > width) ? width : ((int)currentPreviewWidthHeight.x < 1) ? 1 : (int)currentPreviewWidthHeight.x,
+			((int)currentPreviewWidthHeight.y > height) ? height : ((int)currentPreviewWidthHeight.y < 1) ? 1 : ((int)currentPreviewWidthHeight.y),
 			ref cameras);
+	}
+	private Vector2 SetMaxHandW(int count)
+	{
+		int maxHeight = PreviewWindow.maxHeight;
+		int maxWidth = PreviewWindow.maxWidth;
+		switch (count)
+		{
+			case 1:
+				maxHeight *= 3;
+				maxWidth *= 3;
+				break;
+			case 2:
+				maxHeight *= 2;
+				maxWidth *= 2;
+				break;
+			default:
+				maxHeight *= 1;
+				maxWidth *= 1;
+				break;
+		}
+		return new Vector2(maxWidth, maxHeight);
+	}
+
+	private int GetNotNullCameraCount(Camera[] cameras)
+	{
+		int cameraCounts = 0;
+		foreach (var camera in cameras)
+		{
+			if (camera != null) cameraCounts++;
+		}
+		return cameraCounts;
 	}
 
 	private Vector2 GetcurrentHeighAndWidth(Vector2 aspectRatio)
 	{
-		Func<Vector2, int> getMultiplier = (aspectRatioCheck) =>
+		Func<Vector2, float> getMultiplier = (aspectRatioCheck) =>
 		  {
 			  return (aspectRatioCheck.x > aspectRatioCheck.y) ?
-			  (int)(maxWidth / aspectRatioCheck.x) :
-			  (int)(maxHeight / aspectRatioCheck.y);
+			  (float)(SetMaxHandW(GetNotNullCameraCount(tempCameras)).x / aspectRatioCheck.x) :
+			  (float)(SetMaxHandW(GetNotNullCameraCount(tempCameras)).y / aspectRatioCheck.y);
 		  };
-		int multiplier = getMultiplier(aspectRatio);
+		float multiplier = getMultiplier(aspectRatio);
 		return aspectRatio * multiplier;
 	}
 
@@ -62,10 +95,10 @@ public class PreviewWindow : EditorWindow
 		{
 			foreach (var texture in texturesData)
 			{
-				if (itemCountInRow == columnsCount)
+
+				if (itemCountInRow == 0 && columnsCount == 0)
 				{
-					itemCountInRow = 0;
-					rowsCounter++;
+					columnsCount = 1;
 				}
 
 				GUI.DrawTexture(new Rect((currentPreviewWidthHeight.x + offsetWidth) * itemCountInRow,
@@ -80,6 +113,13 @@ public class PreviewWindow : EditorWindow
 								   100)
 								   , texture.Key);
 				itemCountInRow++;
+
+				if (itemCountInRow == columnsCount)
+				{
+					itemCountInRow = 0;
+					rowsCounter++;
+				}
+
 			}
 		};
 
@@ -102,8 +142,13 @@ public class PreviewWindow : EditorWindow
 	{
 		int itemCountInRow = 0;
 		int rowsCount = 0;
+		if (columns == 0)
+		{
+			return texturesData.Count;
+		}
 		foreach (var texture in texturesData)
 		{
+
 			if (itemCountInRow == columns)
 			{
 				itemCountInRow = 0;
@@ -122,6 +167,7 @@ public class PreviewWindow : EditorWindow
 		int i = 0;
 		foreach (var camera in cameras)
 		{
+			if (camera == null) continue;
 			i++;
 			RenderTexture rt = new RenderTexture(w, h, 24);
 			camera.targetTexture = rt;
