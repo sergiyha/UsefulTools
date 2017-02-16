@@ -79,9 +79,8 @@ public class ScreenShotMenu : EditorWindow
 
 	private void OnGUI()
 	{
-		//Notifications
-		EnshureThatSerializedObjectWasntDestroyed();
 
+		EnshureThatSerializedObjectWasntDestroyed();
 
 		PaintAspectRatio();
 		AspectChecker();
@@ -138,7 +137,7 @@ public class ScreenShotMenu : EditorWindow
 		return isCameraExist;
 	}
 
-	private float timeToShowNotification = 2f;
+	private float timeToShowNotification = 3f;
 
 	private void Update()
 	{
@@ -154,7 +153,7 @@ public class ScreenShotMenu : EditorWindow
 			if (timeToShowNotification <= 0f)
 			{
 				cameraExistingNotificationHolder = false;
-				timeToShowNotification = 2.0f;
+				timeToShowNotification = 3.0f;
 				Repaint();
 			}
 		}
@@ -256,7 +255,7 @@ public class ScreenShotMenu : EditorWindow
 			EditorGUILayout.BeginHorizontal("box");
 			EditorGUILayout.LabelField("Width:", GUILayout.MaxWidth(40f));
 			w = EditorGUILayout.IntField(SetCorrectDimention(w));
-			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(40f));
+			EditorGUILayout.LabelField("Height:", GUILayout.MaxWidth(45f));
 			h = EditorGUILayout.IntField(SetCorrectDimention(h));
 			Repaint();
 			EditorGUILayout.EndHorizontal();
@@ -346,7 +345,7 @@ public class ScreenShotMenu : EditorWindow
 			camera.targetTexture = null;
 			RenderTexture.active = null;
 			byte[] bytes = screenShot.EncodeToPNG();
-			System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath : Path + "/" + inputName + "_" + i + ".png", bytes);
+			System.IO.File.WriteAllBytes((Path == Application.dataPath) ? Application.dataPath + "/" + inputName + "_" + i + ".png" : Path + "/" + inputName + "_" + i + ".png", bytes);
 		}
 	}
 

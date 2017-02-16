@@ -80,6 +80,7 @@ public class PreviewWindow : EditorWindow
 	{
 		DrawPreview();
 	}
+
 	private void DrawPreview()
 	{
 		int offsetWidth = 5;
@@ -107,9 +108,9 @@ public class PreviewWindow : EditorWindow
 										 currentPreviewWidthHeight.y),
 										 texture.Value);
 
-				GUI.Label(new Rect(((currentPreviewWidthHeight.x + offsetWidth) * itemCountInRow) + currentPreviewWidthHeight.x / 2,
+				GUI.Label(new Rect(((currentPreviewWidthHeight.x + offsetWidth) * itemCountInRow),
 									((currentPreviewWidthHeight.y + offsetHeight) * rowsCounter) + currentPreviewWidthHeight.y,
-								   100,
+								   1000,
 								   100)
 								   , texture.Key);
 				itemCountInRow++;
@@ -163,11 +164,17 @@ public class PreviewWindow : EditorWindow
 
 	public void MakePreviewShot(int w, int h, ref Camera[] cameras, TextureFormat textureFormat = TextureFormat.ARGB32)// TextureFormat.RGB24)
 	{
+		List<object> tempCameraInstances = new List<object>();
 		texturesData = new Dictionary<string, Texture2D>();
 		int i = 0;
 		foreach (var camera in cameras)
 		{
 			if (camera == null) continue;
+			bool sameCamera = false;
+
+			if (tempCameraInstances.Contains(camera)) sameCamera = true;
+			else tempCameraInstances.Add(camera);
+
 			i++;
 			RenderTexture rt = new RenderTexture(w, h, 24);
 			camera.targetTexture = rt;
@@ -178,9 +185,8 @@ public class PreviewWindow : EditorWindow
 			camera.targetTexture = null;
 			RenderTexture.active = null;
 			screenShot.Apply();//Todo same camera names
-			texturesData.Add(camera.name, screenShot);
-			Caching.CleanCache();
-
+			var cameraName = sameCamera ? "same camera as: " + camera.name : camera.name;
+			texturesData.Add(cameraName, screenShot);
 		}
 	}
 
