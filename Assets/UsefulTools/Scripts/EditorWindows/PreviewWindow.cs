@@ -167,6 +167,7 @@ public class PreviewWindow : EditorWindow
 		List<object> tempCameraInstances = new List<object>();
 		texturesData = new Dictionary<string, Texture2D>();
 		int i = 0;
+		int sameCameraCount = 0;
 		foreach (var camera in cameras)
 		{
 			if (camera == null) continue;
@@ -186,6 +187,13 @@ public class PreviewWindow : EditorWindow
 			RenderTexture.active = null;
 			screenShot.Apply();//Todo same camera names
 			var cameraName = sameCamera ? "same camera as: " + camera.name : camera.name;
+
+			if (texturesData.ContainsKey(cameraName))
+			{
+				sameCameraCount++;
+				texturesData.Add(cameraName + "_" + sameCameraCount, screenShot);
+				continue;
+			}
 			texturesData.Add(cameraName, screenShot);
 		}
 	}
